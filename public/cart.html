@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background: #007bff; color: white; }
+        .error { color: red; text-align: center; }
+        button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .delete-btn { background: #dc3545; color: white; }
+        .delete-btn:hover { background: #c82333; }
+        #total { font-weight: bold; text-align: right; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Cart</h2>
+        <button onclick="logout()">Logout</button>
+        <a href="books.html">Back to Books</a>
+        <div id="error" class="error"></div>
+        <table id="cart-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="cart-body"></tbody>
+        </table>
+        <div id="total"></div>
+    </div>
+    <script>
+        async function loadCart() {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Token:', token); // Debug token
+                const response = await fetch('http://localhost:3000/cart', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                console.log('Cart response status:', response.status); // Debug status
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.log('Cart error data:', errorData); // Debug error
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const items = await response.json();
+                console.log('Cart items:', items); // Debug items
+                const tbody = document.getElementById('cart-body');
+                tbody.innerHTML = '';
+                let totalPrice = 0;
+                items.forEach(item => {
+                    totalPrice += item.price * item.quantity;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${item.title}</td><td>${item.author}</td><td>$${item.price.toFixed(2)}</td><td>${item.quantity}</td><td><button class="delete-btn" onclick="removeFromCart(${item.book_id})">Remove</button></td>`;
+                    tbody.appendChild(row);
+                });
+                document.getElementById('total').textContent = `Total: $${totalPrice.toFixed(2)}`;
+                if (items.length === 0) {
+                    document.getElementById('error').textContent = 'Cart is empty';
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = `Error loading cart: ${error.message}`;
+                console.error('Load cart error:', error);
+            }
+        }
+
+        async function removeFromCart(book_id) {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Removing from cart, book ID:', book_id); // Debug cart
+                const response = await fetch(`http://localhost:3000/remove-from-cart/${book_id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                console.log('Remove cart response status:', response.status); // Debug cart
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.log('Remove cart error data:', errorData); // Debug cart
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    alert('Item removed from cart!');
+                    loadCart();
+                } else {
+                    document.getElementById('error').textContent = data.message || 'Remove from cart failed';
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = `Remove from cart error: ${error.message}`;
+                console.error('Remove from cart error:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+
+        window.onload = loadCart;
+    </script>
+</body>
+</html>

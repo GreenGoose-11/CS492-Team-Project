@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Store</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background: #007bff; color: white; }
+        .error { color: red; text-align: center; }
+        button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .add-btn { background: #28a745; }
+        .add-btn:hover { background: #218838; }
+        .loading { color: gray; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Available Books</h2>
+        <button onclick="logout()">Logout</button>
+        <a href="cart.html">View Cart</a>
+        <div id="error" class="error"></div>
+        <div id="loading" class="loading">Loading books...</div>
+        <table id="books-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="books-body"></tbody>
+        </table>
+    </div>
+    <script>
+        async function loadBooks() {
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.style.display = 'block';
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Token:', token); // Debug token
+                const url = 'http://localhost:3000/books';
+                console.log('Fetching URL:', url); // Debug URL
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                console.log('Response status:', response.status); // Debug status
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.log('Error data:', errorData); // Debug error
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const books = await response.json();
+                console.log('Books:', books); // Debug books
+                loadingDiv.style.display = 'none';
+                const tbody = document.getElementById('books-body');
+                tbody.innerHTML = '';
+                if (books.length === 0) {
+                    document.getElementById('error').textContent = 'No books found';
+                } else {
+                    document.getElementById('error').textContent = ''; // Clear error
+                    books.forEach(book => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${book.title}</td><td>${book.author}</td><td>$${book.price.toFixed(2)}</td><td>${book.stock}</td><td><button class="add-btn" onclick="addToCart(${book.id})">Add to Cart</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                document.getElementById('error').textContent = `Error loading books: ${error.message}`;
+                console.error('Books error:', error);
+                if (error.message.includes('Unauthorized') || error.message.includes('Invalid or expired token')) {
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+
+        async function addToCart(id) {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Adding to cart, book ID:', id); // Debug cart
+                const response = await fetch('http://localhost:3000/add-to-cart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ book_id: id })
+                });
+                console.log('Cart response status:', response.status); // Debug cart
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.log('Cart error data:', errorData); // Debug cart
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    alert('Added to cart!');
+                    loadBooks(); // Reload to update stock if needed
+                } else {
+                    document.getElementById('error').textContent = data.message || 'Add to cart failed';
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = `Add to cart error: ${error.message}`;
+                console.error('Add to cart error:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+
+        window.onload = loadBooks;
+    </script>
+</body>
+</html>

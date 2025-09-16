@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        form { margin-bottom: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background: #007bff; color: white; }
+        .error { color: red; text-align: center; }
+        .delete-btn { background: #dc3545; color: white; }
+        .delete-btn:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Panel</h2>
+        <button onclick="logout()">Logout</button>
+        <div id="error" class="error"></div>
+        <h3>Add Book</h3>
+        <input type="text" id="title" placeholder="Title" required>
+        <input type="text" id="author" placeholder="Author" required>
+        <input type="number" id="price" placeholder="Price" required>
+        <input type="number" id="stock" placeholder="Stock" required>
+        <button onclick="addBook()">Add Book</button>
+
+        <h3>Books List</h3>
+        <table id="books-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="books-body"></tbody>
+        </table>
+    </div>
+    <script>
+        async function addBook() {
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const stock = parseInt(document.getElementById('stock').value);
+            const errorDiv = document.getElementById('error');
+
+            if (!title || !author || isNaN(price) || isNaN(stock)) {
+                errorDiv.textContent = 'Please fill in all fields correctly';
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:3000/add-book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ title, author, price, stock })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    alert('Book added successfully!');
+                    loadBooks();
+                } else {
+                    errorDiv.textContent = data.message || 'Add book failed';
+                }
+            } catch (error) {
+                errorDiv.textContent = `Add book error: ${error.message}`;
+                console.error('Add book error:', error);
+            }
+        }
+
+        async function deleteBook(id) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`http://localhost:3000/delete-book/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    alert('Book deleted successfully!');
+                    loadBooks();
+                } else {
+                    document.getElementById('error').textContent = data.message || 'Delete book failed';
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = `Delete book error: ${error.message}`;
+                console.error('Delete book error:', error);
+            }
+        }
+
+        async function loadBooks() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:3000/books', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP error: ${response.status}`);
+                }
+                const books = await response.json();
+                const tbody = document.getElementById('books-body');
+                tbody.innerHTML = '';
+                books.forEach(book => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${book.title}</td><td>${book.author}</td><td>$${book.price.toFixed(2)}</td><td>${book.stock}</td><td><button class="delete-btn" onclick="deleteBook(${book.id})">Delete</button></td>`;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                document.getElementById('error').textContent = `Error loading books: ${error.message}`;
+                console.error('Load books error:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+
+        window.onload = loadBooks;
+    </script>
+</body>
+</html>

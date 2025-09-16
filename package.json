@@ -1,0 +1,18 @@
+{
+  "name": "cs492-gp2",
+  "version": "1.0.0",
+  "description": "CS492 Group Project Authentication App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No tests specified\" && exit 0",
+    "build": "echo \"Build step placeholder\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^8.5.1",
+    "sqlite3": "^5.1.7"
+  }
+}
